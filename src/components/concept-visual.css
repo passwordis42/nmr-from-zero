@@ -1,0 +1,50 @@
+.concept-visual {
+  margin-block: 1rem;
+  border: 1px solid #dce5db;
+  border-radius: 14px;
+  background: #f8faf5;
+  color: #243c32;
+  overflow: hidden;
+  min-width: 0;
+}
+.cv-heading { padding: 1rem 1rem .3rem; }
+.cv-heading > span { color: #68796b; font-size: .72rem; letter-spacing: .06em; }
+.cv-heading h4 { margin: .35rem 0 .2rem; font-size: 1rem; line-height: 1.65; font-weight: 650; }
+.cv-diagram { display: block; width: 100%; height: auto; fill: #243c32; }
+.cv-diagram text { font-family: inherit; font-size: 14px; }
+.cv-diagram .cv-svg-heading { font-size: 14px; font-weight: 600; }
+.cv-diagram .cv-svg-small { font-size: 12px; }
+.cv-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding: .4rem .9rem .8rem; }
+.cv-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  min-width: 64px;
+  min-height: 44px;
+  padding: .5rem .65rem;
+  border: 1px solid #cbd8ca;
+  border-radius: 7px;
+  background: #fff;
+  color: #315c47;
+  font: inherit;
+  font-size: .8rem;
+  cursor: pointer;
+}
+.cv-controls button:hover:not(:disabled) { background: #e9f0e6; }
+.cv-controls button:focus-visible { outline: 3px solid #3d6f9d; outline-offset: 2px; }
+.cv-controls button:disabled { cursor: not-allowed; color: #647363; background: #eef1eb; }
+.cv-frame { margin-left: auto; font-size: .75rem; font-variant-numeric: tabular-nums; color: #667565; }
+.cv-equivalent, .cv-boundary, .cv-motion-note { margin: 0; padding: .65rem 1rem; font-size: .82rem; line-height: 1.8; overflow-wrap: anywhere; }
+.cv-equivalent { border-top: 1px solid #e2e9df; }
+.cv-boundary { background: #eef3e9; color: #53634f; }
+.cv-motion-note { padding-top: 0; color: #53634f; }
+.concept-visual strong { font-weight: 650; }
+@media (max-width: 380px) {
+  .cv-controls { gap: .3rem; padding-inline: .65rem; }
+  .cv-controls button { min-width: 58px; padding-inline: .5rem; }
+  .cv-equivalent, .cv-boundary, .cv-motion-note { padding-inline: .75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .concept-visual *, .concept-visual *::before, .concept-visual *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

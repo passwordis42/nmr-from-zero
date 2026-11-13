@@ -1,0 +1,58 @@
+.guided-activity{border:1px solid #dce5de;border-radius:6px;background:#fff;color:#173b3a;overflow:hidden;margin:22px 0;font-size:14px}
+.guided-activity>header{padding:20px 25px 17px;background:#f6f7f3;border-bottom:1px solid #e3e9e3}
+.guided-kicker{font-size:11px;color:#60796e;letter-spacing:.12em;font-weight:700}
+.guided-activity h3{font-size:21px;line-height:1.5;margin:7px 0 0;font-weight:650}
+.guided-activity button{font:inherit;font-size:12px;line-height:1.6;color:#173b3a;background:#fff;border:1px solid #cfded3;border-radius:5px;padding:6px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.guided-activity button:hover{background:#f0f5ef;border-color:#8bad9c}
+.guided-activity button:focus-visible,.guided-activity input:focus-visible{outline:3px solid #d9ae62;outline-offset:3px}
+.guided-activity button[aria-pressed=true]{background:#e7f0e9;border-color:#749b87}
+.guided-transport{padding:11px 25px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #e5eae5}
+.guided-transport>div{display:flex;flex-wrap:wrap;gap:7px}
+.guided-activity .guided-play{background:#173b3a;border-color:#173b3a;color:#fff}
+.guided-transport>label{font-size:10px;color:#64786b;min-width:150px;max-width:230px;flex:1}
+.guided-transport output{float:right;font-variant-numeric:tabular-nums}
+.guided-activity input[type=range]{accent-color:#218e82;width:100%;box-sizing:border-box;display:block;cursor:pointer;margin:7px 0 0;height:20px}
+.guided-body{padding:22px 25px 20px}
+.guided-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px 24px;margin:0 0 21px;align-items:center}
+.guided-control{display:block;font-size:12px;color:#526d5e;min-width:0}
+.guided-control>span{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.guided-control output{font-weight:650;font-variant-numeric:tabular-nums;color:#173b3a}
+.guided-control small{font-size:10px;color:#88978e}
+.guided-choices{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 18px}
+.guided-controls .guided-choices{margin:0}
+.guided-graphic{display:block;width:100%;height:auto;max-width:100%;overflow:visible}
+.guided-graphic text{font-family:inherit;font-size:13px;fill:#4e685a}
+.guided-chart{min-width:0;margin:12px 0 20px}
+.guided-chart .guided-graphic{min-width:380px}
+.guided-chart{overflow-x:auto}
+.guided-legend{display:flex;gap:10px 18px;justify-content:center;flex-wrap:wrap;font-size:11px;color:#5b7465;margin-top:7px}
+.guided-legend>span{display:flex;align-items:center;gap:6px}
+.guided-legend i{width:17px;height:3px;border-radius:2px}
+.guided-two-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:center}
+.guided-two-columns .guided-chart .guided-graphic{min-width:310px}
+.guided-plane{max-width:340px;margin:auto}
+.guided-cycle{display:flex;gap:4px;margin:12px 0 20px;flex-wrap:wrap}
+.guided-cycle>div{flex:1;min-width:85px;padding:10px;background:#f5f7f2;border-top:3px solid #d7e3d7;font-size:11px;line-height:1.8}
+.guided-cycle>div.is-active{border-color:#218e82;background:#eaf3eb}
+.guided-cycle b{display:block;font-size:16px}
+.guided-readings{display:flex;flex-wrap:wrap;gap:14px 24px;padding:16px 0;border-top:1px solid #e6eae5;border-bottom:1px solid #e6eae5;margin:16px 0 0}
+.guided-readings>div{display:flex;flex:1;flex-direction:column;gap:5px;min-width:110px}
+.guided-readings span{font-size:11px;color:#728575}
+.guided-readings strong{font-size:18px;font-weight:600;line-height:1.6;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.guided-readings small{font-size:11px;font-weight:400}
+.guided-explanation{font-size:13px;line-height:1.9;color:#3d5b49;margin:17px 0 10px}
+.guided-model{font-size:11px;line-height:1.9;color:#78897b;margin:14px 0 0;padding-top:12px;border-top:1px dashed #dbe5dc}
+.guided-small,.guided-centre{font-size:11px;line-height:1.8;color:#6d8373}
+.guided-centre{text-align:center;margin:0 0 14px}
+.guided-location-strip{display:flex;justify-content:space-between;gap:8px;font-size:12px;background:#f4f7f1;border-bottom:1px solid #d5e1d2;padding:12px}
+.guided-gate{display:flex;align-items:center;flex-wrap:wrap;gap:15px;font-size:11px;margin:15px 0 22px}
+.guided-gate>div{position:relative;height:22px;flex:1;min-width:130px;background:#edf3eb;border-bottom:1px solid #a7bea8}
+.guided-gate i{display:block;height:21px;background:#c77932}
+.guided-gate b{position:absolute;width:2px;height:35px;top:-6px;background:#173b3a}
+.guided-materials{display:grid;grid-template-columns:1fr 1fr;gap:30px;max-width:470px;margin:23px auto}
+.guided-materials>div{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;font-size:12px}
+.guided-materials span{color:#718574;font-size:11px}
+.guided-material{width:120px;height:120px;border-radius:50%;border:1px solid #adc2ae}
+.guided-reception{border:1px solid #d5e2d3;border-radius:5px;padding:16px;background:#fafcf8;margin:20px 0}.guided-reception.is-early{border-color:#dbc4a6;background:#fffcf6}.guided-reception h4{font-size:15px;margin:0 0 12px}.guided-reception-feedback{font-size:12px;line-height:1.9;color:#385b44;margin:14px 0 6px}.guided-reception.is-early .guided-reception-feedback{color:#885c2a}.guided-reception>small{display:block;font-size:10px;line-height:1.8;color:#7c8b78}.guided-reception-choices{padding-top:12px;border-top:1px solid #e4e9e0}
+.guided-activity.is-focused>header{padding:14px 20px 12px}.guided-activity.is-focused h3{font-size:18px;margin-top:5px}.guided-activity.is-focused .guided-body{padding-top:12px}.guided-activity.is-focused .guided-model{font-size:10px}.guided-activity.is-focused .guided-explanation{margin-top:8px}
+@media(max-width:680px){.guided-activity>header{padding:18px}.guided-activity h3{font-size:18px}.guided-transport{padding:12px 17px;flex-wrap:wrap}.guided-transport>label{flex-basis:100%;max-width:none}.guided-body{padding:18px 16px}.guided-controls,.guided-two-columns{grid-template-columns:1fr}.guided-graphic text{font-size:14px}.guided-apparatus{min-width:540px}.guided-body{overflow-x:auto}.guided-readings strong{font-size:16px}.guided-readings{gap:14px}.guided-explanation{font-size:12px}.guided-model{font-size:10px}.guided-materials{gap:12px}.guided-material{width:100px;height:100px}.guided-cycle>div{min-width:80px}}

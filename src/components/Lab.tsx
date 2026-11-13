@@ -1,7 +1,8 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentType } from 'react';
 import { Play, Pause, StepForward, RotateCcw } from 'lucide-react';
 import type { LabId } from '../types';
+import type { ActivityHandle, LabSnapshot, SnapshotValue } from '../learning';
 import { GAMMA_H_HZ_T, TAU, aliasedFrequency, capacitanceForFrequencyPf, checkTiming, ensembleSignal, fft, fieldErrorPpm, fieldStatistics, larmorHz, lcFrequencyHz, linspace, longitudinalRecovery, reconstructPhantom, resonatorResponse, rotatingFrameVector, shiftedIndex, transverseDecay, waveAt } from '../physics/models';
 import type { SamplingMask, Vec3 } from '../physics/models';
 import './labs.css';
@@ -9,7 +10,11 @@ import './labs.css';
 const COLORS = { blue: '#386fb1', orange: '#c77932', teal: '#218e82', ink: '#173b3a', grey: '#7b8790' };
 type Point = { x: number; y: number };
 type Series = { label: string; color: string; values: Point[]; dashed?: boolean };
-type Playback = { progress: number; advanced: boolean; resetTime: () => void };
+type SnapshotData = Omit<LabSnapshot, 'id' | 'title' | 'capturedAt'>;
+type Playback = { progress: number; advanced: boolean; resetTime: () => void; mode?: string; report: (data: SnapshotData) => void };
+function useReport(report: Playback['report'], parameters: SnapshotValue[], readings: SnapshotValue[], model: string, time: LabSnapshot['time'], view?: string) {
+  useLayoutEffect(() => { report({ parameters, readings, model, time, view }); });
+}
 const descriptors: Record<LabId, { title: string; description: string }> = {
   waves: { title: '两列波，为什么会增强或消失？', description: '把频率和相位分开调。先看单条波，再看它们逐点相加的结果。' },
   spin: { title: '把磁化矢量翻过来', description: '静磁场决定共振频率，射频脉冲改变磁化方向。这里观察旋转坐标系中的净磁化。' },
@@ -36,7 +41,7 @@ function Plot({ series, xMin = 0, xMax, yMin = -1, yMax = 1, xLabel, yLabel, cur
   const px = (x: number) => left + (x - xMin) / (xMax - xMin) * (width - left - right);
   const py = (y: number) => top + (yMax - y) / (yMax - yMin) * (height - top - bottom);
   const tick = (n: number) => Number(n.toFixed(Math.abs(n) < 3 ? 2 : 1)).toString();
-  return <div className="lab-chart"><svg className="lab-plot" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${yLabel}随${xLabel}的曲线`}><title>{yLabel}随{xLabel}的曲线</title>
+  return <div className="lab-chart"><svg className="lab-plot" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${yLabel}随${xLabel}的曲线`}><title>{`${yLabel}随${xLabel}的曲线`}</title>
     {linspace(yMin, yMax, 5).map((y, i) => <g key={`y${i}`}><line x1={left} x2={width - right} y1={py(y)} y2={py(y)} stroke="#e5ebe9" /><text x={left - 9} y={py(y) + 4} textAnchor="end">{tick(y)}</text></g>)}
     {linspace(xMin, xMax, 5).map((x, i) => <g key={`x${i}`}><line x1={px(x)} x2={px(x)} y1={top} y2={height - bottom} stroke="#edf0ef" /><text x={px(x)} y={height - bottom + 21} textAnchor="middle">{tick(x)}</text></g>)}
     <text x={left} y={15} className="lab-axis-label">{yLabel}</text><text x={width - right} y={height - 5} textAnchor="end" className="lab-axis-label">{xLabel}</text>
@@ -47,7 +52,7 @@ function Plot({ series, xMin = 0, xMax, yMin = -1, yMax = 1, xLabel, yLabel, cur
   </svg><Legend series={series} /></div>;
 }
 
-function WavesLab({ progress, resetTime }: Playback) {
+function WavesLab({ progress, resetTime, report }: Playback) {
   const [frequency, setFrequency] = useState(4), [phase, setPhase] = useState(0);
   const series = useMemo(() => {
     const times = linspace(0, 1, 501);
@@ -58,13 +63,15 @@ function WavesLab({ progress, resetTime }: Playback) {
     ];
   }, [frequency, phase]);
   const preset = (nextPhase: number) => { setFrequency(4); setPhase(nextPhase); resetTime(); };
+  useReport(report, [{ label: '波 A 频率', value: 4, unit: 'Hz' }, { label: '波 B 频率', value: frequency, unit: 'Hz' }, { label: '波 B 初相位', value: phase, unit: '°' }], [{ label: '合成幅度', value: waveAt(progress, 4) + waveAt(progress, frequency, phase), unit: '相对单位' }], '两条等幅理想正弦逐点相加。', { value: progress, unit: 's' });
   return <><div className="lab-presets"><p>先预测，再对照：同频同幅时，相位会怎样改变合成波？</p><div role="group" aria-label="波叠加对照预设"><button type="button" aria-pressed={frequency === 4 && phase === 0} onClick={() => preset(0)}>同相 · 0°</button><button type="button" aria-pressed={frequency === 4 && phase === 180} onClick={() => preset(180)}>反相 · 180°</button></div></div><div className="lab-controls"><Slider label="波 B 的频率" value={frequency} min={1} max={12} unit="Hz" onChange={setFrequency} /><Slider label="波 B 的初始相位" value={phase} min={0} max={360} step={15} unit="°" onChange={setPhase} /></div><Plot series={series} xMax={1} yMin={-2.2} yMax={2.2} xLabel="时间 / s" yLabel="幅度 / 相对单位" cursor={progress} /><div className="lab-metrics"><Metric label="光标时刻" value={`${progress.toFixed(2)} s`} /><Metric label="这一刻的合成值" value={(waveAt(progress, 4) + waveAt(progress, frequency, phase)).toFixed(2)} /></div><p className="lab-observation"><b>试试看：</b>将频率设为 4 Hz，相位设为 180°，两列等幅波逐点抵消。频率不同，即使一开始同相，也会逐渐错开。</p><p className="lab-model-note">模型：理想正弦信号，幅度任意归一化。核磁中的“相位相干”同样取决于各信号的相对相位，但自旋并不是机械振动的小球。</p></>;
 }
 
-function SpinLab({ progress }: Playback) {
+function SpinLab({ progress, report }: Playback) {
   const [b0, setB0] = useState(50), [flip, setFlip] = useState(90), [offset, setOffset] = useState(0);
   const marker = useId().replace(/:/g, '');
   const timeMs = progress * 200, vector = rotatingFrameVector(flip, offset, timeMs);
+  useReport(report, [{ label: 'B₀', value: b0, unit: 'mT' }, { label: '翻转角', value: flip, unit: '°' }, { label: '频偏', value: offset, unit: 'Hz' }], [{ label: '拉莫尔频率', value: larmorHz(b0), unit: 'Hz' }, ...vector.map((value, i) => ({ label: ['Mx', 'My', 'Mz'][i], value, unit: 'M₀' }))], '旋转坐标系，正氢核 γ，dM/dt=γM×B；理想瞬时脉冲，无弛豫。', { value: timeMs, unit: 'ms' });
   const project = ([x, y, z]: Vec3) => [250 + 118 * x + 62 * y, 180 + 40 * y - 115 * z];
   const origin = project([0, 0, 0]), tip = project(vector);
   const axes: { v: Vec3; label: string }[] = [{ v: [1.2, 0, 0], label: '+x' }, { v: [0, 1.4, 0], label: '+y' }, { v: [0, 0, 1.2], label: '+z' }];
@@ -80,28 +87,33 @@ function SpinLab({ progress }: Playback) {
     <p className="lab-observation"><b>试试看：</b>90° 时 M 落到横向平面；180° 时 M 指向 −z。频偏为 0 时，M 在这个坐标系里静止；把频偏调到 5 Hz，再播放。</p><p className="lab-model-note">约定：右手坐标，氢核 γ &gt; 0，dM/dt = γ M × B。沿 +x 的正 B₁ 将 +Mz 转向 +My。B₁ 指同向旋转分量；理想瞬时脉冲后只模拟频偏进动，不含弛豫。画面没有按真实 MHz 速度旋转。</p></>;
 }
 
-function RelaxationLab({ progress }: Playback) {
-  const [view, setView] = useState<'echo' | 't1' | 't2'>('echo'), [tau, setTau] = useState(40), [t2, setT2] = useState(200), [spread, setSpread] = useState(40), [t1, setT1] = useState(500);
-  const end = view === 'echo' ? 2.8 * tau : 3 * (view === 't1' ? t1 : t2);
+function RelaxationLab({ progress, report, mode, resetTime }: Playback) {
+  type View = 'echo' | 'fid' | 't1' | 't2';
+  const [view, setView] = useState<View>(mode === 't1t2' ? 't1' : mode === 'fid' ? 'fid' : 'echo');
+  const [tau, setTau] = useState(40), [t2, setT2] = useState(200), [spread, setSpread] = useState(40), [t1, setT1] = useState(500);
+  const end = view === 'echo' ? 2.8 * tau : view === 'fid' ? 150 : 3 * (view === 't1' ? t1 : t2);
+  const labels: Record<View, string> = { echo: 'FID → 回波', fid: 'FID 与静态失相', t1: 'T₁ 恢复', t2: 'T₂ 衰减' };
+  const allowed: View[] = mode === 't1t2' ? ['t1', 't2'] : mode === 'fid' ? ['fid'] : ['echo', 'fid', 't2', 't1'];
   const series: Series[] = useMemo(() => {
     const times = linspace(0, end, 361);
     if (view === 't1') return [{ label: '纵向磁化 Mz 恢复', color: COLORS.blue, values: times.map(x => ({ x, y: longitudinalRecovery(x, t1) })) }];
     if (view === 't2') return [{ label: '横向磁化的 T₂ 衰减', color: COLORS.orange, values: times.map(x => ({ x, y: transverseDecay(x, t2) })) }];
-    return [
-      { label: '无 180° 脉冲的 FID 幅度', color: COLORS.grey, values: times.map(x => { const s = ensembleSignal(x, tau, t2, spread, false); return { x, y: Math.hypot(s.re, s.im) }; }) },
-      { label: '有 180° 脉冲的回波幅度', color: COLORS.teal, values: times.map(x => { const s = ensembleSignal(x, tau, t2, spread); return { x, y: Math.hypot(s.re, s.im) }; }) },
-      { label: '不可逆的 T₂ 衰减包络', color: COLORS.orange, dashed: true, values: times.map(x => ({ x, y: transverseDecay(x, t2) })) },
-    ];
+    const curves: Series[] = [{ label: 'FID 幅度：含静态频偏', color: COLORS.grey, values: times.map(x => { const s = ensembleSignal(x, tau, t2, spread, false); return { x, y: Math.hypot(s.re, s.im) }; }) }, { label: '仅不可逆 T₂ 衰减', color: COLORS.orange, dashed: true, values: times.map(x => ({ x, y: transverseDecay(x, t2) })) }];
+    if (view === 'echo') curves.push({ label: '理想 180° 后的回波幅度', color: COLORS.teal, values: times.map(x => { const s = ensembleSignal(x, tau, t2, spread); return { x, y: Math.hypot(s.re, s.im) }; }) });
+    return curves;
   }, [end, view, t1, tau, t2, spread]);
-  return <><div className="lab-segment" role="group" aria-label="选择弛豫实验"><button type="button" className={view === 'echo' ? 'is-active' : ''} onClick={() => setView('echo')}>FID → 回波</button><button type="button" className={view === 't2' ? 'is-active' : ''} onClick={() => setView('t2')}>T₂ 衰减</button><button type="button" className={view === 't1' ? 'is-active' : ''} onClick={() => setView('t1')}>T₁ 恢复</button></div>
-    <div className={`lab-controls ${view === 'echo' ? 'lab-controls-three' : ''}`}>{view === 'echo' ? <><Slider label="180° 脉冲时刻 τ" value={tau} min={20} max={80} step={5} unit="ms" onChange={setTau} /><Slider label="不可逆弛豫时间 T₂" value={t2} min={60} max={600} step={20} unit="ms" onChange={setT2} /><Slider label="静态频偏分布宽度 σ" value={spread} min={0} max={100} step={5} unit="Hz" onChange={setSpread} /></> : view === 't1' ? <Slider label="纵向弛豫时间 T₁" value={t1} min={100} max={1500} step={100} unit="ms" onChange={setT1} /> : <Slider label="横向弛豫时间 T₂" value={t2} min={60} max={600} step={20} unit="ms" onChange={setT2} />}</div>
-    <Plot series={series} xMax={end} yMin={0} yMax={1.05} xLabel="时间 / ms" yLabel={view === 't1' ? 'Mz / M₀' : '|Mxy| / M₀'} cursor={progress * end} markers={view === 'echo' ? [{ x: tau, label: '180° 脉冲', color: COLORS.orange }, { x: 2 * tau, label: '2τ 聚相', color: COLORS.teal }] : [{ x: view === 't1' ? t1 : t2, label: view === 't1' ? '1 × T₁' : '1 × T₂' }, { x: end, label: view === 't1' ? '3 × T₁' : '3 × T₂' }]} />
-    <div className="lab-metrics">{view === 'echo' ? <><Metric label="几何聚相时刻 TE = 2τ" value={`${2 * tau} ms`} /><Metric label="这一刻剩余的横向磁化" value={`${(100 * transverseDecay(2 * tau, t2)).toFixed(1)}%`} note="即 exp(−2τ / T₂)，不会回到 100%" /></> : <><Metric label={`当前光标：${(progress * 3).toFixed(2)} × ${view === 't1' ? 'T₁' : 'T₂'}`} value={`${(progress * end).toFixed(0)} ms`} /><Metric label={view === 't1' ? '当前已恢复比例' : '当前剩余比例'} value={`${(100 * (view === 't1' ? longitudinalRecovery(progress * end, t1) : transverseDecay(progress * end, t2))).toFixed(1)}%`} /><Metric label="1 个 / 3 个时间常数后" value={view === 't1' ? '63.2% / 95.0%' : '36.8% / 5.0%'} /></>}</div>
-    <p className="lab-observation"><b>试试看：</b>{view === 'echo' ? '保持 T₂ 不变，增大频偏：FID 更快消失，但 2τ 处仍能聚相。然后缩短 T₂，观察回波也变矮。严格的幅度峰可因 T₂ 包络略早于几何聚相时刻。' : view === 't1' ? '增大 T₁：达到同样恢复比例需要更久。这里从 Mz = 0 开始，纵向恢复与横向退相位不是同一个过程。' : '播放或单步前进，比较一个与三个 T₂ 附近还剩多少横向磁化。再切换到 T₁ 恢复：二者的指数规律相似，物理含义不同。'}</p>
-    <p className="lab-model-note">{view === 'echo' ? '模型：257 个带高斯权重的静态频偏群、理想瞬时 90°/180° 脉冲，独立乘以 T₂ 包络。不包含扩散、脉冲误差、B₁ 不均匀或交换；这个高斯 FID 不被强行拟合为单一指数 T₂*。' : '模型：理想单组分的单指数弛豫，时间窗为三个时间常数。T₂ 视图不叠加静态频偏造成的退相位；T₁ 视图从 Mz = 0 恢复到 M₀ = 1。'}</p></>;
+  const time = progress * end;
+  const current = view === 't1' ? longitudinalRecovery(time, t1) : view === 't2' ? transverseDecay(time, t2) : (() => { const s = ensembleSignal(time, tau, t2, spread, view === 'echo'); return Math.hypot(s.re, s.im); })();
+  const model = view === 't1' || view === 't2' ? '理想单组分单指数模型；T₁ 从 Mz=0 恢复，T₂ 不含静态频偏。' : `257 个高斯权重静态频偏群，独立 T₂ 包络；${view === 'echo' ? '理想瞬时 90°/180° 脉冲。' : '仅初始激励后的自由演化。'}不含扩散、交换或 B₁ 不均匀；不把此高斯 FID 强行当作单指数。`;
+  useReport(report, view === 't1' ? [{ label: 'T₁', value: t1, unit: 'ms' }] : [{ label: 'T₂', value: t2, unit: 'ms' }, ...(view === 't2' ? [] : [{ label: '静态频偏标准差', value: spread, unit: 'Hz' }]), ...(view === 'echo' ? [{ label: 'τ', value: tau, unit: 'ms' }] : [])], [{ label: view === 't1' ? 'Mz/M₀' : '|Mxy|/M₀', value: current }, ...(view === 'echo' ? [{ label: '几何聚相时刻', value: 2 * tau, unit: 'ms' }] : [])], model, { value: time, unit: 'ms' }, labels[view]);
+  return <>{allowed.length > 1 && <div className="lab-segment" role="group" aria-label="选择弛豫实验">{allowed.map(v => <button key={v} type="button" className={view === v ? 'is-active' : ''} onClick={() => { setView(v); resetTime(); }}>{labels[v]}</button>)}</div>}
+    <div className={`lab-controls ${view === 'echo' ? 'lab-controls-three' : ''}`}>{view === 'echo' && <Slider label="180° 脉冲时刻 τ" value={tau} min={20} max={80} step={5} unit="ms" onChange={setTau} />}{view === 't1' ? <Slider label="纵向弛豫时间 T₁" value={t1} min={100} max={1500} step={100} unit="ms" onChange={setT1} /> : <Slider label="横向弛豫时间 T₂" value={t2} min={60} max={600} step={20} unit="ms" onChange={setT2} />}{(view === 'echo' || view === 'fid') && <Slider label="静态频偏分布宽度 σ" value={spread} min={0} max={100} step={5} unit="Hz" onChange={setSpread} />}</div>
+    <Plot series={series} xMax={end} yMin={0} yMax={1.05} xLabel="时间 / ms" yLabel={view === 't1' ? 'Mz / M₀' : '|Mxy| / M₀'} cursor={time} markers={view === 'echo' ? [{ x: 0, label: '90° 激励', color: COLORS.orange }, { x: tau, label: '180° 脉冲', color: COLORS.orange }, { x: 2 * tau, label: '2τ 聚相', color: COLORS.teal }] : view === 'fid' ? [] : [{ x: view === 't1' ? t1 : t2, label: view === 't1' ? '1 × T₁' : '1 × T₂' }, { x: end, label: view === 't1' ? '3 × T₁' : '3 × T₂' }]} />
+    <div className="lab-metrics"><Metric label="当前时刻" value={`${time.toFixed(1)} ms`} /><Metric label={view === 't1' ? '已恢复的纵向比例' : '剩余横向信号比例'} value={`${(100 * current).toFixed(1)}%`} />{view === 'echo' && <Metric label="2τ 处的理想剩余比例" value={`${(100 * transverseDecay(2 * tau, t2)).toFixed(1)}%`} />}{(view === 't1' || view === 't2') && <Metric label="1 个 / 3 个时间常数后" value={view === 't1' ? '63.2% / 95.0%' : '36.8% / 5.0%'} />}</div>
+    <p className="lab-observation"><b>试试看：</b>{view === 'echo' ? '保持 T₂ 不变，增大静态频偏：FID 更快消失，但 2τ 处仍能聚相。缩短 T₂，回波也会变矮；幅度峰可能因包络衰减略早于 2τ。' : view === 'fid' ? '把频偏宽度先设为 0，再增大。相位散开使总信号额外变小，并不意味着每个磁矩同时消失；这里还没有施加再聚相脉冲。' : view === 't1' ? '在一个 T₁ 附近，恢复约 63.2%；三个 T₁ 后仍未完全恢复。改变 T₁ 后，同样恢复比例所需的时间改变。' : '一个 T₂ 后剩约 36.8%，三个 T₂ 后剩约 5%。这是横向磁化的衰减，不是纵向磁化的恢复。'}</p><p className="lab-model-note">模型：{model}</p></>;
 }
 
-function SamplingLab({ progress, resetTime }: Playback) {
+function SamplingLab({ progress, resetTime, report, mode }: Playback) {
   const [frequency, setFrequency] = useState(45), [sampleRate, setSampleRate] = useState(64);
   const alias = aliasedFrequency(frequency, sampleRate), count = 64, duration = (count - 1) / sampleRate;
   const samples = Array.from({ length: count }, (_, i) => ({ x: i / sampleRate, y: Math.cos(TAU * frequency * i / sampleRate) }));
@@ -111,20 +123,22 @@ function SamplingLab({ progress, resetTime }: Playback) {
   const times = linspace(0, duration, 901);
   const series = [{ label: '真实的连续余弦', color: COLORS.orange, values: times.map(x => ({ x, y: Math.cos(TAU * frequency * x) })) }, { label: '与采样点吻合的低频余弦', color: COLORS.blue, dashed: true, values: times.map(x => ({ x, y: Math.cos(TAU * alias * x) })) }];
   const preset = (nextRate: number) => { setFrequency(45); setSampleRate(nextRate); resetTime(); };
+  useReport(report, [{ label: '输入频率', value: frequency, unit: 'Hz' }, { label: '采样率', value: sampleRate, unit: '次/s' }, { label: '采样点数', value: count }], [{ label: '折叠频率', value: alias, unit: 'Hz' }, ...(mode === 'time' ? [] : [{ label: 'FFT 峰频点', value: peak.x, unit: 'Hz' }])], '实数单通道余弦采样；不是直接采样 MHz 核磁射频。', { value: progress * duration, unit: 's' }, mode === 'time' ? '时域采样' : '时域与频域');
   return <><div className="lab-presets"><p>先预测，再对照：同一个 45 Hz 信号，采样率翻倍会怎样？</p><div role="group" aria-label="45 Hz 信号的采样率对照"><button type="button" aria-pressed={frequency === 45 && sampleRate === 64} onClick={() => preset(64)}>45 Hz · 64 次/秒</button><button type="button" aria-pressed={frequency === 45 && sampleRate === 128} onClick={() => preset(128)}>45 Hz · 128 次/秒</button></div></div><div className="lab-controls"><Slider label="输入信号频率" value={frequency} min={1} max={90} unit="Hz" onChange={setFrequency} /><Slider label="采样率 fₛ" value={sampleRate} min={16} max={128} step={8} unit="次 / s" onChange={setSampleRate} /></div>
     <Plot series={series} xMax={duration} yMin={-1.15} yMax={1.15} xLabel="时间 / s" yLabel="连续波与 64 个采样点" cursor={progress * duration} points={samples} />
-    <Plot series={[{ label: '64 点 FFT 单边幅度', color: COLORS.teal, values: spectrum }]} xMax={sampleRate / 2} yMin={0} yMax={1.05} xLabel="频率 / Hz" yLabel="幅度 / 归一化" markers={[{ x: alias, label: `${alias.toFixed(1)} Hz` }]} />
-    <div className="lab-metrics"><Metric label="奈奎斯特频率 fₛ / 2" value={`${sampleRate / 2} Hz`} /><Metric label="折叠后频率" value={`${alias.toFixed(1)} Hz`} /><Metric label="实际 FFT 最大频点" value={`${peak.x.toFixed(1)} Hz`} note={`频点间隔 ${sampleRate / count} Hz`} /></div>
-    <p className="lab-observation"><b>试试看：</b>45 Hz 的信号以 64 次/秒采样，看起来像 19 Hz。FFT 无法知道它原来是 45 Hz：缺失的信息必须靠合适的采样率和模拟抗混叠滤波避免。</p><p className="lab-model-note">演示实数、单通道、低频余弦采样；核磁接收常先混频到基带，再以复数 I/Q 表示。这里不直接采样 2 MHz 射频。不整周期截取会产生频谱泄漏，FFT 峰值未必刚好落在理论频率。</p></>;
+    {mode !== 'time' && <Plot series={[{ label: '64 点 FFT 单边幅度', color: COLORS.teal, values: spectrum }]} xMax={sampleRate / 2} yMin={0} yMax={1.05} xLabel="频率 / Hz" yLabel="幅度 / 归一化" markers={[{ x: alias, label: `${alias.toFixed(1)} Hz` }]} />}
+    <div className="lab-metrics"><Metric label="奈奎斯特频率 fₛ / 2" value={`${sampleRate / 2} Hz`} /><Metric label="折叠后频率" value={`${alias.toFixed(1)} Hz`} />{mode !== 'time' && <Metric label="实际 FFT 最大频点" value={`${peak.x.toFixed(1)} Hz`} note={`频点间隔 ${sampleRate / count} Hz`} />}</div>
+    <p className="lab-observation"><b>试试看：</b>45 Hz 的信号以 64 次/秒采样，看起来像 19 Hz。仅凭这些点，无法知道它原来是 45 Hz；采样率翻倍后再比较。</p><p className="lab-model-note">演示实数、单通道、低频余弦采样；这里不直接采样 MHz 射频。{mode !== 'time' && '不整周期截取会产生频谱泄漏，FFT 峰值未必刚好落在理论频率。'}</p></>;
 }
 
 function fieldColor(ppm: number) {
   const amount = Math.min(1, Math.abs(ppm) / 2500);
   return `hsl(${ppm < 0 ? 211 : 30} ${45 + amount * 15}% ${96 - amount * 54}%)`;
 }
-function FieldLab({ progress }: Playback) {
+function FieldLab({ progress, report }: Playback) {
   const [diameter, setDiameter] = useState(160), [correction, setCorrection] = useState(0);
   const stats = fieldStatistics(diameter, correction / 100), baseStats = fieldStatistics(diameter, 0);
+  useReport(report, [{ label: '评估区域直径', value: diameter, unit: 'mm' }, { label: '线性补偿', value: correction, unit: '%' }], [{ label: '峰峰不均匀度', value: stats.peakToPeakPpm, unit: 'ppm' }, { label: '50 mT 下频率跨度', value: larmorHz(50) * stats.peakToPeakPpm * 1e-6, unit: 'Hz' }], '人为二维多项式场，不是 Halbach 仿真、三维 DSV 或漏磁范围。', { value: progress * 100, unit: '% 扫描进度' });
   const tiles = 32, px = (mm: number) => 190 + 1.2 * mm, py = (mm: number) => 153 - 1.2 * mm;
   return <><div className="lab-controls"><Slider label="目标圆形区域直径" value={diameter} min={40} max={200} step={10} unit="mm" onChange={setDiameter} /><Slider label="线性场误差补偿" value={correction} min={0} max={100} step={5} unit="%" onChange={setCorrection} /></div>
     <div className="lab-field-layout"><svg viewBox="0 0 390 325" className="lab-field" role="img" aria-label={`示例二维场图，目标直径${diameter}毫米，峰峰不均匀度${stats.peakToPeakPpm.toFixed(0)}ppm`}><title>示例二维场偏差，不是实际磁体的测量或仿真</title>
@@ -136,10 +150,11 @@ function FieldLab({ progress }: Playback) {
     <p className="lab-observation"><b>试试看：</b>补偿到 100% 后仍有颜色差，因为二次项还在。再缩小评估区域，数字会继续改善。因此“1000 ppm”必须同时说明在哪个体积、按什么指标测得。</p><p className="lab-model-note">模型：B 偏差由人为指定的线性与二次多项式计算，只显示二维截面；虚线不是三维 DSV、磁体净孔或漏磁边界。它不预测具体 Halbach 的重量、场分布或可用成像范围。</p></>;
 }
 
-function CoilLab({ progress }: Playback) {
+function CoilLab({ progress, report }: Playback) {
   const [inductance, setInductance] = useState(8), [capacitance, setCapacitance] = useState(699), [q, setQ] = useState(60);
   const target = larmorHz(50), resonance = lcFrequencyHz(inductance, capacitance), bandwidth = resonance / q;
   const lower = Math.min(target, resonance) * .86, upper = Math.max(target, resonance) * 1.14;
+  useReport(report, [{ label: 'L', value: inductance, unit: 'μH' }, { label: 'C', value: capacitance, unit: 'pF' }, { label: 'Q', value: q }], [{ label: '谐振频率', value: resonance, unit: 'Hz' }, { label: '近似带宽', value: bandwidth, unit: 'Hz' }, { label: '光标频率', value: lower + (upper - lower) * progress, unit: 'Hz' }], '理想 LC 和近谐振响应，不含寄生参数与阻抗匹配。', { value: progress * 100, unit: '% 扫频进度' });
   const points = [...linspace(lower, upper, 601), resonance].sort((a, b) => a - b).map(f => ({ x: f / 1e6, y: resonatorResponse(f, resonance, q) }));
   return <><div className="lab-controls lab-controls-three"><Slider label="线圈电感 L" value={inductance} min={2} max={20} step={.5} unit="μH" onChange={setInductance} /><Slider label="调谐电容 C" value={capacitance} min={100} max={3000} unit="pF" onChange={setCapacitance} /><Slider label="加载后的品质因数 Q" value={q} min={10} max={200} step={5} onChange={setQ} /></div>
     <Plot series={[{ label: '简化谐振响应', color: COLORS.teal, values: points }, { label: '−3 dB 幅度 ≈ 0.707', color: COLORS.grey, dashed: true, values: [{ x: lower / 1e6, y: Math.SQRT1_2 }, { x: upper / 1e6, y: Math.SQRT1_2 }] }]} xMin={lower / 1e6} xMax={upper / 1e6} yMin={0} yMax={1.1} xLabel="频率 / MHz" yLabel="相对幅度" cursor={(lower + (upper - lower) * progress) / 1e6} markers={[{ x: target / 1e6, label: '氢核 f₀', color: COLORS.blue }]} />
@@ -148,9 +163,10 @@ function CoilLab({ progress }: Playback) {
     <p className="lab-observation"><b>试试看：</b>调准中心频率后，提高 Q，峰会变窄。窄带有利于选择频率，但可能装不下激发带宽，而且振铃时间通常更长。</p><p className="lab-model-note">模型：理想 LC 与近共振单峰响应，幅度归一化。不模拟寄生参数、样品损耗或 50 Ω 阻抗匹配；“调谐到正确频率”和“匹配到 50 Ω”是两项不同的工作。</p></>;
 }
 
-function TimingLab({ progress }: Playback) {
+function TimingLab({ progress, report }: Playback) {
   const [duration, setDuration] = useState(100), [ringdown, setRingdown] = useState(80), [receive, setReceive] = useState(240);
   const txStart = 40, txEnd = txStart + duration, result = checkTiming({ txStartUs: txStart, txDurationUs: duration, ringdownUs: ringdown, rxStartUs: receive, rxDurationUs: 300 });
+  useReport(report, [{ label: '发射脉宽', value: duration, unit: 'μs' }, { label: '设定恢复期', value: ringdown, unit: 'μs' }, { label: '接收开始', value: receive, unit: 'μs' }], [{ label: '最早允许接收', value: result.safeStart, unit: 'μs' }, { label: '时序检查', value: result.message }], '单脉冲与固定接收窗，仅检查时间关系，不证明真实硬件保护合格。', { value: progress * 1000, unit: 'μs' });
   const x = (time: number) => 126 + time / 1000 * 480;
   const rows = [{ label: 'RF 发射', y: 50, start: txStart, end: txEnd, color: COLORS.orange }, { label: '保护 / 恢复', y: 112, start: txStart, end: result.safeStart, color: COLORS.grey }, { label: 'ADC 接收', y: 174, start: receive, end: receive + 300, color: result.valid ? COLORS.teal : '#ae4d43' }];
   return <><div className="lab-controls lab-controls-three"><Slider label="发射脉冲时长" value={duration} min={40} max={240} step={10} unit="μs" onChange={setDuration} /><Slider label="设定的发射后恢复期" value={ringdown} min={20} max={200} step={10} unit="μs" onChange={setRingdown} /><Slider label="接收开始时刻" value={receive} min={40} max={550} step={10} unit="μs" onChange={setReceive} /></div>
@@ -164,10 +180,11 @@ function PixelImage({ data, size, label, kspace = false, originalMax = 1 }: { da
   const pixel = 224 / size;
   return <figure className="lab-pixel-figure"><svg viewBox="0 0 224 224" role="img" aria-label={label}><title>{label}</title>{data.map((value, i) => { const intensity = Math.max(0, Math.min(1, kspace ? Math.log1p(value) / Math.log1p(originalMax) : value)); const grey = Math.round(intensity * 255); return <rect key={i} x={(i % size) * pixel} y={Math.floor(i / size) * pixel} width={pixel + .04} height={pixel + .04} fill={`rgb(${grey},${grey},${grey})`} />; })}</svg><figcaption>{label}</figcaption></figure>;
 }
-function ImagingLab({ progress, advanced }: Playback) {
+function ImagingLab({ progress, advanced, report }: Playback) {
   const [mode, setMode] = useState<SamplingMask>('full'), [fraction, setFraction] = useState(40), [noise, setNoise] = useState(0);
   const size = 32, scan = advanced ? progress : 1;
   const result = useMemo(() => reconstructPhantom(size, mode, fraction / 100, noise, scan), [mode, fraction, noise, scan]);
+  useReport(report, [{ label: '采样掩膜', value: mode }, { label: '中心区域边长', value: fraction, unit: '%' }, { label: '噪声', value: noise }], [{ label: '已采样点', value: result.sampledCount }, { label: '已扫描行', value: result.acquiredRows }, { label: 'RMSE', value: result.rmse }], '32×32 人工模体，复数二维 FFT/逆 FFT；未采集补零，固定噪声种子。', { value: scan * 100, unit: '% 采集进度' });
   const rawMax = Math.max(...result.spectrum.map(v => Math.hypot(v.re, v.im)));
   const kspace = Array.from({ length: size * size }, (_, i) => { const v = result.sampled[shiftedIndex(i % size, Math.floor(i / size), size)]; return Math.hypot(v.re, v.im); });
   const selectedId = useId();
@@ -178,23 +195,27 @@ function ImagingLab({ progress, advanced }: Playback) {
 }
 
 const components: Record<LabId, ComponentType<Playback>> = { waves: WavesLab, spin: SpinLab, relaxation: RelaxationLab, sampling: SamplingLab, field: FieldLab, coil: CoilLab, timing: TimingLab, imaging: ImagingLab };
-export default function Lab({ id }: { id: LabId }) {
+const Lab = forwardRef<ActivityHandle, { id: LabId; mode?: string }>(function Lab({ id, mode }, ref) {
   const [progress, setProgress] = useState(0), [running, setRunning] = useState(false), [advanced, setAdvanced] = useState(false), [resetKey, setResetKey] = useState(0);
   const timelineId = useId();
-  useEffect(() => { setProgress(0); setRunning(false); setAdvanced(false); }, [id]);
+  const snapshot = useRef<SnapshotData>({ parameters: [], readings: [], model: '' });
+  const report = useCallback((data: SnapshotData) => { snapshot.current = data; }, []);
+  useEffect(() => { setProgress(0); setRunning(false); setAdvanced(false); }, [id, mode]);
   useEffect(() => {
     if (!running) return;
     const timer = window.setInterval(() => setProgress(current => Math.min(1, current + 1 / 120)), 50);
     return () => window.clearInterval(timer);
   }, [running]);
   useEffect(() => { if (progress >= 1) setRunning(false); }, [progress]);
-  const Component = components[id], descriptor = descriptors[id];
+  const Component = components[id], descriptor = id === 'sampling' && mode === 'time' ? { title: '把连续波变成采样点', description: '先只看时间与电压：改变采样率，比较同一组点可能代表的不同连续波。' } : id === 'relaxation' && mode === 't1t2' ? { title: '恢复与衰减：两个方向的变化', description: '纵向恢复与横向衰减各有自己的时间常数。先分开观察。' } : id === 'relaxation' && mode === 'fid' ? { title: '为什么刚收到的信号很快变小？', description: '比较不可逆的横向衰减与静态频偏造成的相位散开。' } : descriptors[id];
+  useImperativeHandle(ref, () => ({ pause: () => setRunning(false), getSnapshot: () => ({ id, title: descriptor.title, capturedAt: new Date().toISOString(), ...snapshot.current }) }), [id, descriptor.title]);
   const resetTime = () => { setRunning(false); setProgress(0); setAdvanced(false); };
   const reset = () => { resetTime(); setResetKey(k => k + 1); };
   const seek = (value: number) => { setRunning(false); setAdvanced(true); setProgress(value); };
   return <section className="lab-surface" aria-label={descriptor.title}>
     <div className="lab-heading"><span className="lab-kicker"><i /> 教学模拟</span><h3>{descriptor.title}</h3><p>{descriptor.description}</p></div>
     <div className="lab-transport"><div className="lab-transport-buttons"><button type="button" className="lab-play" aria-label={running ? '暂停实验动画' : '播放实验动画'} onClick={() => { if (progress >= 1) setProgress(0); setAdvanced(true); setRunning(v => !v); }}>{running ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}{running ? '暂停' : '播放'}</button><button type="button" aria-label="实验动画前进一步" onClick={() => { setRunning(false); setAdvanced(true); setProgress(p => Math.min(1, p + .05)); }}><StepForward size={14} aria-hidden="true" />单步</button><button type="button" aria-label="重置实验参数和动画" onClick={reset}><RotateCcw size={14} aria-hidden="true" />重置</button></div><div className="lab-timeline"><div className="lab-timeline-label"><label htmlFor={timelineId}>拖动演示时间</label><output htmlFor={timelineId}>{(progress * 100).toFixed(1)}%</output></div><input id={timelineId} type="range" min={0} max={1} step={.001} value={progress} aria-label="演示时间进度，拖动或使用方向键调整并暂停" aria-valuetext={`${(progress * 100).toFixed(1)}% 的演示时间`} onPointerDown={() => setRunning(false)} onKeyDown={() => setRunning(false)} onChange={e => seek(Number(e.target.value))} /><span className="lab-playback-label">{running ? '正在演示' : progress >= 1 ? '演示完成' : advanced ? '已暂停' : '可随时开始'}<span className="lab-progress-track" aria-hidden="true"><i style={{ width: `${progress * 100}%` }} /></span></span></div></div>
-    <div className="lab-body"><Component key={`${id}-${resetKey}`} progress={progress} advanced={advanced} resetTime={resetTime} /></div>
+    <div className="lab-body"><Component key={`${id}-${mode}-${resetKey}`} progress={progress} advanced={advanced} resetTime={resetTime} mode={mode} report={report} /></div>
   </section>;
-}
+});
+export default Lab;
