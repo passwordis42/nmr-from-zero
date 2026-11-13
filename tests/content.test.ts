@@ -3,6 +3,8 @@ import katex from 'katex';
 import { stages } from '../src/content/course';
 import { sources, glossary, hardwareModules, advancedReadings, corrections } from '../src/content/resources';
 import { parseProgress } from '../src/progress';
+import { buildSteps } from '../src/content/buildGuide';
+import { projectAudits } from '../src/content/projectAudit';
 const lessons=stages.flatMap(s=>s.lessons);
 const ids=new Set(lessons.map(l=>l.id));
 const sourceIds=new Set(sources.map(s=>s.id));
@@ -24,6 +26,22 @@ describe('complete and renderable learning content',()=>{
     for(const r of advancedReadings)for(const id of r.sources)expect(sourceIds.has(id)).toBe(true);
     for(const r of corrections)expect(sourceIds.has(r.sourceId)).toBe(true);
     for(const s of sources)expect(new URL(s.url).protocol).toBe('https:');
+  });
+  it('keeps manufacturing routes, lesson references and evidence links usable',()=>{
+    const buildIds = buildSteps.map(step => step.id);
+    expect(new Set(buildIds).size).toBe(buildIds.length);
+    for(const step of buildSteps){
+      expect(step.id).toMatch(/^[a-z0-9-]+$/);
+      for(const id of step.lessonIds)expect(ids.has(id),`missing lesson ${id} in ${step.id}`).toBe(true);
+      for(const id of step.sourceIds)expect(sourceIds.has(id),`missing source ${id} in ${step.id}`).toBe(true);
+      expect(step.quiz.answer).toBeGreaterThanOrEqual(0);
+      expect(step.quiz.answer).toBeLessThan(step.quiz.options.length);
+    }
+    for(const project of projectAudits){
+      expect(project.evidence.length).toBeGreaterThan(0);
+      for(const evidence of project.evidence)expect(new URL(evidence.url).protocol).toBe('https:');
+      for(const gap of project.gaps)expect(gap).toMatch(/作者承认|工程推论|尚未核验/);
+    }
   });
 });
 describe('portable learning progress',()=>{

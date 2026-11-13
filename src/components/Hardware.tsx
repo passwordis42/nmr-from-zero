@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { ArrowUpRight, Cpu } from 'lucide-react';
 import { hardwareModules } from '../content/resources';
 
+const buildRoutes: Record<string, string> = { magnet: 'magnet', gradient: 'gradient', coil: 'coil', transmitter: 'rf-chain', switch: 'rf-chain', receiver: 'rf-chain', adc: 'console', console: 'console', reconstruction: 'imaging' };
+
 export default function Hardware({ compact = false }: { compact?: boolean }) {
   const [selected, setSelected] = useState('magnet');
   const item = hardwareModules.find(m => m.id === selected) ?? hardwareModules[0];
@@ -29,6 +31,6 @@ export default function Hardware({ compact = false }: { compact?: boolean }) {
       <g {...activate('console')} className="machine-part"><path d="M440 285V230m0 55h230v-20" fill="none" stroke="#88948c" strokeDasharray="4 4"/><text x="420" y="314" className="svg-label">控制台：让所有模块按时协作</text></g>
     </svg></div><p className="diagram-hint">点选部件，沿着信号走一遍。<span>图示可左右滑动。</span></p>
     <div className="hardware-select" aria-label="选择仪器部件">{hardwareModules.map(m=><button key={m.id} className={m.id===selected?'selected':''} onClick={()=>setSelected(m.id)}>{m.name}</button>)}</div>
-    {item && <div className="module-detail" aria-live="polite"><div className="module-heading"><h3><Cpu size={18}/>{item.name}</h3><a href={`#/learn/${item.stage}-1`}>相关课程 <ArrowUpRight size={15}/></a></div><p>{item.purpose}</p><dl><div><dt>输入</dt><dd>{item.input}</dd></div><div><dt>输出</dt><dd>{item.output}</dd></div><div><dt>故障线索</dt><dd>{item.failure}</dd></div></dl></div>}
+    {item && <div className="module-detail" aria-live="polite"><div className="module-heading"><h3><Cpu size={18}/>{item.name}</h3><a href={`#/learn/${item.stage}-1`}>相关课程 <ArrowUpRight size={15}/></a></div><p>{item.purpose}</p><dl><div><dt>输入</dt><dd>{item.input}</dd></div><div><dt>输出</dt><dd>{item.output}</dd></div><div><dt>故障线索</dt><dd>{item.failure}</dd></div></dl>{!compact&&<a className="text-button" href={`#/build/${buildRoutes[item.id]}`}>学习这个模块的制造与验收 <ArrowUpRight size={14}/></a>}</div>}
   </div>;
 }

@@ -41,13 +41,31 @@ export const sources: Source[] = [
     id: 'ezymri', title: 'ezyMRI · 从零搭建 MRI 的团队实践',
     url: 'https://arxiv.org/abs/2411.11365', kind: '工程论文 · 整机',
     description: '记录 2024 年工作坊中磁体、梯度、RF、控制台和系统集成的分工与困难，适合把原理对应到真实工程。论文所述四天包含团队协作和准备条件，不代表个人零基础四天即可造好整机。',
-    license: '该 arXiv 版本为非独占分发许可；不据此推定全部硬件文件许可。', chapters: [1, 7, 8, 9, 10, 12], status: '已核验作者摘要、论文入口及 2025 年期刊发表信息；未复现实验。',
+    license: '该 arXiv 版本为非独占分发许可；不据此推定全部硬件文件许可。', chapters: [1, 7, 8, 9, 10, 12], status: '已读取 49 页公开论文中的制造与联调章节，并核验 2025 年发表信息；未复现实验。',
   },
   {
     id: 'osii', title: 'OSI² ONE · 模块化低场 MRI',
     url: 'https://gitlab.com/osii/mri-scanners/osii-one', kind: '开源工程 · 整机',
     description: '约 50 mT 永磁 MRI 的整机入口，组织磁体、梯度、射频、控制与系统版本。用于了解各模块怎样组成可成像仪器；具体参数和设计文件须按同一版本配套阅读。',
-    license: '整机入口：CERN-OHL-W-2.0；各模块按各自许可证。', chapters: [1, 7, 8, 9, 10, 11, 12], status: '已核验官方项目页与当前 GitLab 路径；不是本站已完成的硬件复现。',
+    license: '整机入口：CERN-OHL-W-2.0；各模块按各自许可证。', chapters: [1, 7, 8, 9, 10, 11, 12], status: '已核验整机版本索引、磁体 BOM、制造与装配指南和质量指南；未逐一验证全部 CAD／PCB，也未复现实机。',
+  },
+  {
+    id: 'osii-manufacture', title: 'OSI² ONE 磁体 · 制造与加工指南',
+    url: 'https://gitlab.com/osii/magnet/30cm-halbach-magnet/-/blob/main/doc/manufacturing-guide.md', kind: '工程指南 · 制造',
+    description: '具体说明磁体支架环的材料、公差、夹持、铣削和后处理。结合相同版本的 BOM、CAD 与材料表阅读；页面给出的加工设置属于其案例，不能直接当作其他材料或机床的参数。',
+    license: '按磁体仓库对应版本的 LICENSE 使用；本站提供链接。', chapters: [7, 12], status: '已读取指南全文及实际目录；未执行加工或验证全部 CAD。',
+  },
+  {
+    id: 'osii-assembly', title: 'OSI² ONE 磁体 · 装配指南',
+    url: 'https://gitlab.com/osii/magnet/30cm-halbach-magnet/-/blob/main/doc/assembly-guide.md', kind: '工程指南 · 制造',
+    description: '沿指定零件、极性标记和装配顺序理解磁块与支架如何组成磁体。使用前先固定仓库版本，核对材料、工装与质量记录。',
+    license: '按磁体仓库对应版本的 LICENSE 使用；本站提供链接。', chapters: [7, 12], status: '已读取公开装配步骤；本站未实施实体装配。',
+  },
+  {
+    id: 'osii-quality', title: 'OSI² ONE 磁体 · 质量检查指南',
+    url: 'https://gitlab.com/osii/magnet/30cm-halbach-magnet/-/blob/main/doc/qm-guide.md', kind: '工程指南 · 测量',
+    description: '检查磁块缺陷、支架尺寸、口袋位置与方向，附测量表例子。开头仍标有 TBD；已有检查内容，但不能当作完整整机验收规程。',
+    license: '按磁体仓库对应版本的 LICENSE 使用；本站提供链接。', chapters: [7, 12], status: '已核验指南内容与待完善标记；区分文档存在和完整性。',
   },
   {
     id: 'osii-paper', title: '低场 MRI 参考系统：校准与跨站点比较',
@@ -65,13 +83,19 @@ export const sources: Source[] = [
     id: 'shimmer', title: 'Shimmer · 低场磁体的被动匀场',
     url: 'https://arxiv.org/abs/2608.22351', kind: '研究预印本 · 磁体',
     description: '把实测场图、磁场模拟、补偿磁块优化和支架生成串成闭环。适合理解匀场为什么需要先测量、再计算、再复测；论文结果对应其测试磁体和指定测量区域。',
-    license: '论文 CC-BY-4.0；工具代码许可本次未逐项确认。', chapters: [7, 12], status: '已核验 2026 年作者摘要与论文许可；未运行其优化流程。',
+    license: '论文 CC-BY-4.0；已核验 Shimmer 仓库代码 GPL-3.0。', chapters: [7, 12], status: '已读取方法全文、GitLab README、教程流程和 LICENSE；未运行优化或检查全部 STL 的可制造性。',
   },
   {
     id: 'halbach', title: 'HalbachMRIDesigner · 磁体几何与场模拟',
     url: 'https://github.com/menkueclab/HalbachMRIDesigner', kind: '开源工具 · 磁体',
     description: '根据 JSON 中的磁块、环和切片几何生成 OpenSCAD，并支持场图和 FEM 文件。实际字段包括 radius、innerRadius 等；不是输入一个孔径就自动获得满足指标的磁体。',
     license: 'GPL-3.0。', chapters: [7, 12], status: '已核验 README、参数解析与 --scad 输出逻辑；未安装执行。',
+  },
+  {
+    id: 'halbach-code', title: 'HalbachMRIDesigner · 固定版本源码核对',
+    url: 'https://github.com/menkueclab/HalbachMRIDesigner/blob/22cb72a3d95e52a9e78b212f32a9115d7227ce19/HalbachMRIDesigner.py', kind: '工程源码 · 制造前核对',
+    description: '对照 README 与实际入口：--scad 才写出几何文件；--fem 分支中的 generateONELABfile=False 不会默认输出 .pro。程序打印的均匀度基于 z=0 平面的 |Bx|，不能替代三维 DSV 场图验收。',
+    license: 'GPL-3.0。', chapters: [7, 12], status: '已读取固定提交 22cb72a 的入口逻辑；静态核验，未执行或检验加工可行性。',
   },
   {
     id: 'gradient', title: 'GradientDesignTool · 梯度线圈设计',
@@ -89,7 +113,7 @@ export const sources: Source[] = [
     id: 'nmrduino', title: 'NMRduino · 低频 NMR 控制与采集',
     url: 'https://github.com/NMRduino/NMRduino', kind: '开源工程 · NMR',
     description: '面向亚 MHz 磁共振的模块化电子平台，公开固件、原理图、PCB、BOM 与外壳，GUI 在独立仓库。适合认识脉冲和采集链路；电子板尺寸不等于完整仪器尺寸，也不自带 MRI 空间编码。',
-    license: '软件 GPL-3.0；硬件 CC-BY-SA-4.0。', chapters: [1, 6, 8, 9, 12], status: '已核验主仓库与 2024 年论文；未搭建实机。',
+    license: '软件 GPL-3.0；硬件 CC-BY-SA-4.0。', chapters: [1, 6, 8, 9, 12], status: '已核验 v1.2.0 发布清单中的 Gerber、原理图 PDF、外壳 STL、固件 HEX 及 GUI 3.37+ 要求；未逐一检查制造附件质量或搭建实机。',
   },
   {
     id: 'magnethical', title: 'magnETHical · 25 MHz 桌面 NMR 波谱仪',
@@ -260,6 +284,8 @@ export interface Correction {
 }
 
 export const corrections: Correction[] = [
+  { claim: 'Halbach 工具打印了 Homogeneity，就证明整个三维成像区域都足够均匀。', correction: '固定提交 22cb72a 的打印值来自 z=0 平面的 |Bx|。场分量、采样区域和统计定义都影响结果，应另外评估目标三维体积并实测。程序输出不是实机验收。', sourceId: 'halbach-code' },
+  { claim: 'NMRduino 公开了制造附件，所以可直接用于 50 mT 的氢核 MRI。', correction: 'NMRduino 的公开定位是 sub-MHz NMR；50 mT 下质子频率约为 2.129 MHz，不能据“有 Gerber”推定其控制与射频链在该频段兼容。还需梯度与成像控制，或另选符合频段的系统。', sourceId: 'nmrduino' },
   { claim: '核自旋就是一个带电小球在自转。', correction: '自旋是量子内禀角动量。小磁针或陀螺只能帮助理解部分行为，不能作为微观结构的机械解释；本课箭头主要代表宏观磁化。', sourceId: 'keeler2' },
   { claim: '有了 NMR 回波，做一次 FFT 就能得到 MRI 图像。', correction: '普通 NMR 回波没有自动携带完整空间坐标。成像需要设计空间编码与采样轨迹，再按模型重建。', sourceId: 'stanford' },
   { claim: 'T₁ 是信号衰减，T₂ 是磁化恢复，二者前后发生。', correction: 'T₁ 描述纵向趋向平衡，T₂ 描述横向相干衰减；两类过程可以同时发生。FID 中的表观失相还可能包含静态场不均匀。', sourceId: 'keeler8' },

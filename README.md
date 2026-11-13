@@ -9,6 +9,8 @@
 - 每课包含问题、直观解释、具体例子、实验操作、可展开公式、硬件对应、误区、小测与来源。
 - 八组实验均在浏览器本地计算。二维实验实际执行复数 FFT、采样掩膜和逆变换；图片为人工模体，不是真实扫描结果。
 - 整机地图、75 条中英术语、公开来源资料库及进阶阅读。
+- [硬件工坊](https://passwordis42.github.io/nmr-from-zero/#/build)：10 步制造与验证学习，包含前置条件、文件与工具、操作、测量判据、排障和小测，可下载制造记录模板。额外工坊自测不计入基础课进度，离开页面后重置。
+- [开源项目审计](https://passwordis42.github.io/nmr-from-zero/#/projects)：逐项区分公开资料已提供的内容、作者报告的限制、工程适配判断和尚未核验的部分。
 - 自动保存本机学习进度，支持 JSON 导出与合并导入。无需账号，不提供云端进度同步。
 
 ## 本地运行
@@ -38,6 +40,8 @@ npm run preview
 
 - `src/content/course.ts`：课程、例子、小测和来源编号。
 - `src/content/resources.ts`：公开参考资料、术语、硬件模块与纠错。
+- `src/content/buildGuide.ts`：制造、模块联调和测量验收的学习路线。
+- `src/content/projectAudit.ts`：开源项目复刻证据与局限，附核验日期及原始链接。
 - `src/physics/models.ts`：带单位约定的数值模型。
 - `src/components/Lab.tsx`：八组交互实验。
 - `tests`：数值结果、内容完整性、公式渲染和进度解析检查。
