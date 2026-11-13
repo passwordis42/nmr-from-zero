@@ -9,7 +9,7 @@ import './labs.css';
 const COLORS = { blue: '#386fb1', orange: '#c77932', teal: '#218e82', ink: '#173b3a', grey: '#7b8790' };
 type Point = { x: number; y: number };
 type Series = { label: string; color: string; values: Point[]; dashed?: boolean };
-type Playback = { progress: number; advanced: boolean };
+type Playback = { progress: number; advanced: boolean; resetTime: () => void };
 const descriptors: Record<LabId, { title: string; description: string }> = {
   waves: { title: '两列波，为什么会增强或消失？', description: '把频率和相位分开调。先看单条波，再看它们逐点相加的结果。' },
   spin: { title: '把磁化矢量翻过来', description: '静磁场决定共振频率，射频脉冲改变磁化方向。这里观察旋转坐标系中的净磁化。' },
@@ -47,7 +47,7 @@ function Plot({ series, xMin = 0, xMax, yMin = -1, yMax = 1, xLabel, yLabel, cur
   </svg><Legend series={series} /></div>;
 }
 
-function WavesLab({ progress }: Playback) {
+function WavesLab({ progress, resetTime }: Playback) {
   const [frequency, setFrequency] = useState(4), [phase, setPhase] = useState(0);
   const series = useMemo(() => {
     const times = linspace(0, 1, 501);
@@ -57,7 +57,8 @@ function WavesLab({ progress }: Playback) {
       { label: '合成 A + B', color: COLORS.teal, values: times.map(x => ({ x, y: waveAt(x, 4) + waveAt(x, frequency, phase) })) },
     ];
   }, [frequency, phase]);
-  return <><div className="lab-controls"><Slider label="波 B 的频率" value={frequency} min={1} max={12} unit="Hz" onChange={setFrequency} /><Slider label="波 B 的初始相位" value={phase} min={0} max={360} step={15} unit="°" onChange={setPhase} /></div><Plot series={series} xMax={1} yMin={-2.2} yMax={2.2} xLabel="时间 / s" yLabel="幅度 / 相对单位" cursor={progress} /><div className="lab-metrics"><Metric label="光标时刻" value={`${progress.toFixed(2)} s`} /><Metric label="这一刻的合成值" value={(waveAt(progress, 4) + waveAt(progress, frequency, phase)).toFixed(2)} /></div><p className="lab-observation"><b>试试看：</b>将频率设为 4 Hz，相位设为 180°，两列等幅波逐点抵消。频率不同，即使一开始同相，也会逐渐错开。</p><p className="lab-model-note">模型：理想正弦信号，幅度任意归一化。核磁中的“相位相干”同样取决于各信号的相对相位，但自旋并不是机械振动的小球。</p></>;
+  const preset = (nextPhase: number) => { setFrequency(4); setPhase(nextPhase); resetTime(); };
+  return <><div className="lab-presets"><p>先预测，再对照：同频同幅时，相位会怎样改变合成波？</p><div role="group" aria-label="波叠加对照预设"><button type="button" aria-pressed={frequency === 4 && phase === 0} onClick={() => preset(0)}>同相 · 0°</button><button type="button" aria-pressed={frequency === 4 && phase === 180} onClick={() => preset(180)}>反相 · 180°</button></div></div><div className="lab-controls"><Slider label="波 B 的频率" value={frequency} min={1} max={12} unit="Hz" onChange={setFrequency} /><Slider label="波 B 的初始相位" value={phase} min={0} max={360} step={15} unit="°" onChange={setPhase} /></div><Plot series={series} xMax={1} yMin={-2.2} yMax={2.2} xLabel="时间 / s" yLabel="幅度 / 相对单位" cursor={progress} /><div className="lab-metrics"><Metric label="光标时刻" value={`${progress.toFixed(2)} s`} /><Metric label="这一刻的合成值" value={(waveAt(progress, 4) + waveAt(progress, frequency, phase)).toFixed(2)} /></div><p className="lab-observation"><b>试试看：</b>将频率设为 4 Hz，相位设为 180°，两列等幅波逐点抵消。频率不同，即使一开始同相，也会逐渐错开。</p><p className="lab-model-note">模型：理想正弦信号，幅度任意归一化。核磁中的“相位相干”同样取决于各信号的相对相位，但自旋并不是机械振动的小球。</p></>;
 }
 
 function SpinLab({ progress }: Playback) {
@@ -100,7 +101,7 @@ function RelaxationLab({ progress }: Playback) {
     <p className="lab-model-note">{view === 'echo' ? '模型：257 个带高斯权重的静态频偏群、理想瞬时 90°/180° 脉冲，独立乘以 T₂ 包络。不包含扩散、脉冲误差、B₁ 不均匀或交换；这个高斯 FID 不被强行拟合为单一指数 T₂*。' : '模型：理想单组分的单指数弛豫，时间窗为三个时间常数。T₂ 视图不叠加静态频偏造成的退相位；T₁ 视图从 Mz = 0 恢复到 M₀ = 1。'}</p></>;
 }
 
-function SamplingLab({ progress }: Playback) {
+function SamplingLab({ progress, resetTime }: Playback) {
   const [frequency, setFrequency] = useState(45), [sampleRate, setSampleRate] = useState(64);
   const alias = aliasedFrequency(frequency, sampleRate), count = 64, duration = (count - 1) / sampleRate;
   const samples = Array.from({ length: count }, (_, i) => ({ x: i / sampleRate, y: Math.cos(TAU * frequency * i / sampleRate) }));
@@ -109,7 +110,8 @@ function SamplingLab({ progress }: Playback) {
   const peak = spectrum.reduce((a, b) => b.y > a.y ? b : a);
   const times = linspace(0, duration, 901);
   const series = [{ label: '真实的连续余弦', color: COLORS.orange, values: times.map(x => ({ x, y: Math.cos(TAU * frequency * x) })) }, { label: '与采样点吻合的低频余弦', color: COLORS.blue, dashed: true, values: times.map(x => ({ x, y: Math.cos(TAU * alias * x) })) }];
-  return <><div className="lab-controls"><Slider label="输入信号频率" value={frequency} min={1} max={90} unit="Hz" onChange={setFrequency} /><Slider label="采样率 fₛ" value={sampleRate} min={16} max={128} step={8} unit="次 / s" onChange={setSampleRate} /></div>
+  const preset = (nextRate: number) => { setFrequency(45); setSampleRate(nextRate); resetTime(); };
+  return <><div className="lab-presets"><p>先预测，再对照：同一个 45 Hz 信号，采样率翻倍会怎样？</p><div role="group" aria-label="45 Hz 信号的采样率对照"><button type="button" aria-pressed={frequency === 45 && sampleRate === 64} onClick={() => preset(64)}>45 Hz · 64 次/秒</button><button type="button" aria-pressed={frequency === 45 && sampleRate === 128} onClick={() => preset(128)}>45 Hz · 128 次/秒</button></div></div><div className="lab-controls"><Slider label="输入信号频率" value={frequency} min={1} max={90} unit="Hz" onChange={setFrequency} /><Slider label="采样率 fₛ" value={sampleRate} min={16} max={128} step={8} unit="次 / s" onChange={setSampleRate} /></div>
     <Plot series={series} xMax={duration} yMin={-1.15} yMax={1.15} xLabel="时间 / s" yLabel="连续波与 64 个采样点" cursor={progress * duration} points={samples} />
     <Plot series={[{ label: '64 点 FFT 单边幅度', color: COLORS.teal, values: spectrum }]} xMax={sampleRate / 2} yMin={0} yMax={1.05} xLabel="频率 / Hz" yLabel="幅度 / 归一化" markers={[{ x: alias, label: `${alias.toFixed(1)} Hz` }]} />
     <div className="lab-metrics"><Metric label="奈奎斯特频率 fₛ / 2" value={`${sampleRate / 2} Hz`} /><Metric label="折叠后频率" value={`${alias.toFixed(1)} Hz`} /><Metric label="实际 FFT 最大频点" value={`${peak.x.toFixed(1)} Hz`} note={`频点间隔 ${sampleRate / count} Hz`} /></div>
@@ -178,6 +180,7 @@ function ImagingLab({ progress, advanced }: Playback) {
 const components: Record<LabId, ComponentType<Playback>> = { waves: WavesLab, spin: SpinLab, relaxation: RelaxationLab, sampling: SamplingLab, field: FieldLab, coil: CoilLab, timing: TimingLab, imaging: ImagingLab };
 export default function Lab({ id }: { id: LabId }) {
   const [progress, setProgress] = useState(0), [running, setRunning] = useState(false), [advanced, setAdvanced] = useState(false), [resetKey, setResetKey] = useState(0);
+  const timelineId = useId();
   useEffect(() => { setProgress(0); setRunning(false); setAdvanced(false); }, [id]);
   useEffect(() => {
     if (!running) return;
@@ -186,10 +189,12 @@ export default function Lab({ id }: { id: LabId }) {
   }, [running]);
   useEffect(() => { if (progress >= 1) setRunning(false); }, [progress]);
   const Component = components[id], descriptor = descriptors[id];
-  const reset = () => { setRunning(false); setProgress(0); setAdvanced(false); setResetKey(k => k + 1); };
+  const resetTime = () => { setRunning(false); setProgress(0); setAdvanced(false); };
+  const reset = () => { resetTime(); setResetKey(k => k + 1); };
+  const seek = (value: number) => { setRunning(false); setAdvanced(true); setProgress(value); };
   return <section className="lab-surface" aria-label={descriptor.title}>
     <div className="lab-heading"><span className="lab-kicker"><i /> 教学模拟</span><h3>{descriptor.title}</h3><p>{descriptor.description}</p></div>
-    <div className="lab-transport"><div className="lab-transport-buttons"><button type="button" className="lab-play" aria-label={running ? '暂停实验动画' : '播放实验动画'} onClick={() => { if (progress >= 1) setProgress(0); setAdvanced(true); setRunning(v => !v); }}>{running ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}{running ? '暂停' : '播放'}</button><button type="button" aria-label="实验动画前进一步" onClick={() => { setRunning(false); setAdvanced(true); setProgress(p => Math.min(1, p + .05)); }}><StepForward size={14} aria-hidden="true" />单步</button><button type="button" aria-label="重置实验参数和动画" onClick={reset}><RotateCcw size={14} aria-hidden="true" />重置</button></div><span className="lab-playback-label">{running ? '正在演示' : progress >= 1 ? '演示完成' : advanced ? '已暂停' : '可随时开始'}<span className="lab-progress-track"><i style={{ width: `${progress * 100}%` }} /></span></span></div>
-    <div className="lab-body"><Component key={`${id}-${resetKey}`} progress={progress} advanced={advanced} /></div>
+    <div className="lab-transport"><div className="lab-transport-buttons"><button type="button" className="lab-play" aria-label={running ? '暂停实验动画' : '播放实验动画'} onClick={() => { if (progress >= 1) setProgress(0); setAdvanced(true); setRunning(v => !v); }}>{running ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}{running ? '暂停' : '播放'}</button><button type="button" aria-label="实验动画前进一步" onClick={() => { setRunning(false); setAdvanced(true); setProgress(p => Math.min(1, p + .05)); }}><StepForward size={14} aria-hidden="true" />单步</button><button type="button" aria-label="重置实验参数和动画" onClick={reset}><RotateCcw size={14} aria-hidden="true" />重置</button></div><div className="lab-timeline"><div className="lab-timeline-label"><label htmlFor={timelineId}>拖动演示时间</label><output htmlFor={timelineId}>{(progress * 100).toFixed(1)}%</output></div><input id={timelineId} type="range" min={0} max={1} step={.001} value={progress} aria-label="演示时间进度，拖动或使用方向键调整并暂停" aria-valuetext={`${(progress * 100).toFixed(1)}% 的演示时间`} onPointerDown={() => setRunning(false)} onKeyDown={() => setRunning(false)} onChange={e => seek(Number(e.target.value))} /><span className="lab-playback-label">{running ? '正在演示' : progress >= 1 ? '演示完成' : advanced ? '已暂停' : '可随时开始'}<span className="lab-progress-track" aria-hidden="true"><i style={{ width: `${progress * 100}%` }} /></span></span></div></div>
+    <div className="lab-body"><Component key={`${id}-${resetKey}`} progress={progress} advanced={advanced} resetTime={resetTime} /></div>
   </section>;
 }

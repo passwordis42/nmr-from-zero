@@ -34,6 +34,8 @@ npm run preview
 
 ## 内容与代码
 
+版式与交互参考 [Seeing Theory](https://seeing-theory.brown.edu/) 的概念与实验相邻组织，以及 [Mechanical Watch](https://ciechanow.ski/mechanical-watch/) 的分步讲解和可回看的时间控制。本站采用原创中文内容、SVG 图示和数值模型；白底排版、课内导航与一键对照帮助读者按自己的节奏学习。
+
 - `src/content/course.ts`：课程、例子、小测和来源编号。
 - `src/content/resources.ts`：公开参考资料、术语、硬件模块与纠错。
 - `src/physics/models.ts`：带单位约定的数值模型。
